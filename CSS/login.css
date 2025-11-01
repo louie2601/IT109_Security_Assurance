@@ -1,0 +1,324 @@
+/* Login Page Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    margin: 0;
+    padding: 0;
+    color: white;
+    min-height: 100vh;
+}
+
+.main-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    min-height: calc(100vh - 120px);
+}
+
+.login-container {
+    width: 100%;
+    max-width: 1000%;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-header {
+    background: maroon;
+    color: white;
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.login-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.login-header p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    padding: 0 30px;
+}
+
+.form-group:first-of-type {
+    margin-top: 30px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.required {
+    color: red;
+    margin-left: 2px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: maroon;
+    box-shadow: 0 0 0 3px rgba(128, 0, 0, 0.1);
+}
+
+.form-group input:disabled {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Password Container */
+.password-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-container input {
+    padding-right: 45px;
+}
+
+.show-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px;
+    color: #666;
+    transition: color 0.3s ease;
+}
+
+.show-password:hover:not(:disabled) {
+    color: maroon;
+}
+
+.show-password:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Login Button */
+.login-btn {
+    width: calc(10% - 20px);
+    margin: 0 30px 20px 30px;
+    padding: 15px;
+    background: maroon;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.login-btn:hover:not(:disabled) {
+    background: #8a0000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(128, 0, 0, 0.3);
+}
+
+.login-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Error Messages */
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px 30px;
+    margin: 20px 0;
+    border-left: 4px solid #dc3545;
+    font-size: 14px;
+}
+
+/* Lockout Timer */
+.lockout-timer {
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px 30px;
+    margin: 20px 0;
+    border-left: 4px solid #ffc107;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#timeRemaining {
+    color: #dc3545;
+    font-size: 16px;
+}
+
+/* Forgot Password Link */
+.forgot-password {
+    text-align: center;
+    padding: 15px 30px;
+    border-top: 1px solid #eee;
+}
+
+.forgot-password a {
+    color: maroon;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+.forgot-password a:hover {
+    color: #8a0000;
+    text-decoration: underline;
+}
+
+/* Register Link */
+.register-link {
+    background: #f8f9fa;
+    text-align: center;
+    padding: 20px 30px;
+    border-top: 1px solid #eee;
+}
+
+.register-link p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.register-link a {
+    color: maroon;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.register-link a:hover {
+    color: #8a0000;
+    text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .main-content {
+        padding: 10px;
+    }
+    
+    .login-container {
+        margin: 0;
+    }
+    
+    .login-header {
+        padding: 20px 15px;
+    }
+    
+    .login-header h2 {
+        font-size: 20px;
+    }
+    
+    .form-group {
+        padding: 0 20px;
+    }
+    
+    .login-btn {
+        width: calc(100% - 40px);
+        margin: 0 20px 20px 20px;
+    }
+    
+    .error-message,
+    .lockout-timer {
+        padding: 12px 20px;
+    }
+    
+    .forgot-password,
+    .register-link {
+        padding: 15px 20px;
+    }
+}
+
+/* Loading State */
+.login-btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.login-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Focus States for Accessibility */
+.login-btn:focus,
+.show-password:focus,
+.forgot-password a:focus,
+.register-link a:focus {
+    outline: 2px solid maroon;
+    outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .login-container {
+        border: 2px solid #000;
+    }
+    
+    .form-group input {
+        border-width: 2px;
+    }
+    
+    .login-btn {
+        border: 2px solid #000;
+    }
+}

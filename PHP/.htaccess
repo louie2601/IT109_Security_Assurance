@@ -1,0 +1,11 @@
+# Protect PHP files from direct access
+<Files "*.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Allow access when requested from PHP files
+RewriteEngine On
+RewriteCond %{HTTP_REFERER} !^https?://(www\.)?localhost [NC]
+RewriteCond %{HTTP_REFERER} !Page\ not\ Found [NC]
+RewriteRule \.php$ - [F,L]

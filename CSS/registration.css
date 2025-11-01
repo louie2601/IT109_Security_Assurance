@@ -1,0 +1,403 @@
+/* Registration Form Styles */
+body {
+  font-family: 'Arial', sans-serif;
+  background: #f8f9fa;
+  margin: 0;
+  padding: 0;
+  color: #333;
+  height: 100px;
+ 
+}
+
+.main-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: calc(100vh - 120px);
+}
+
+.container {
+  width: 400%;
+  height: 10%;
+  max-height: 1000px;
+  max-width: 900px;
+  max-height: fit-content;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Header section */
+.form-header {
+  background: maroon;
+  color: white;
+  text-align: center;
+  padding: 5px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Step Indicator */
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 5px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 20px;
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: -30px;
+  width: 40px;
+  height: 2px;
+  background: #ddd;
+  z-index: 1;
+}
+
+.step.active:not(:last-child)::after {
+  background: maroon;
+}
+
+.step-number {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ddd;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-bottom: 5px;
+  position: relative;
+  z-index: 2;
+}
+
+.step.active .step-number {
+  background: maroon;
+  color: white;
+}
+
+.step-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+.step.active .step-label {
+  color: maroon;
+  font-weight: bold;
+}
+
+/* Form Steps */
+.form-step {
+  display: none;
+  padding: 20px 25px;
+}
+
+.form-step.active {
+  display: block;
+}
+
+.form-step h2 {
+  color: maroon;
+  margin-bottom: 15px;
+  font-size: 20px;
+  text-align: center;
+}
+
+/* Form Layout */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.required {
+  color: red;
+  margin-left: 2px;
+}
+
+.optional {
+  color: red;
+  font-style: italic;
+  margin-left: 5px;
+}
+
+/* Input Styles */
+input, select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+  background: #fff;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: maroon;
+  box-shadow: 0 0 0 2px rgba(128, 0, 0, 0.1);
+}
+
+input[readonly] {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+/* Password Container */
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  padding-right: 45px;
+}
+
+.show-password {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px;
+  color: #666;
+}
+
+.show-password:hover {
+  color: maroon;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.password-strength.weak {
+  color: #dc3545;
+}
+
+.password-strength.medium {
+  color: #ffc107;
+}
+
+.password-strength.strong {
+  color: #28a745;
+}
+
+/* Error Messages */
+.error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+  min-height: 16px;
+}
+
+.validation-message {
+  font-size: 12px;
+  margin-top: 5px;
+  min-height: 16px;
+}
+
+.validation-message.success {
+  color: #28a745;
+}
+
+.validation-message.error {
+  color: #dc3545;
+}
+
+/* Button Styles */
+.button-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  gap: 12px;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.next-btn, .submit-btn {
+  background: maroon;
+  color: white;
+}
+
+.next-btn:hover, .submit-btn:hover {
+  background: #8a0000;
+}
+
+.prev-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.prev-btn:hover {
+  background: #545b62;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .step {
+    margin: 0 10px;
+  }
+  
+  .step:not(:last-child)::after {
+    right: -20px;
+    width: 20px;
+  }
+  
+  .step-label {
+    font-size: 10px;
+  }
+  
+  .container {
+    margin: 10px;
+  }
+  
+  .form-step {
+    padding: 20px;
+  }
+  
+  .button-row {
+    flex-direction: column;
+  }
+}
+
+/* Input Validation States */
+input.valid {
+  border-color: #28a745;
+}
+
+input.invalid {
+  border-color: #dc3545;
+}
+
+/* Loading State */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading button {
+  position: relative;
+}
+
+.loading button::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Additional styles for forgot password and other forms */
+.user-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid maroon;
+}
+
+.user-info p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.success-container {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.success-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.success-container h3 {
+  color: #28a745;
+  margin-bottom: 15px;
+}
+
+.success-container p {
+  color: #666;
+  margin-bottom: 25px;
+}
+
+.back-to-login {
+  text-align: center;
+  padding: 20px;
+  border-top: 1px solid #eee;
+}
+
+.back-to-login a {
+  color: maroon;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.back-to-login a:hover {
+  text-decoration: underline;
+}
