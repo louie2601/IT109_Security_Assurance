@@ -1,6 +1,7 @@
 // Registration Form JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-    let currentStep = 1;
+    const hiddenCurrentStep = document.getElementById('current_step');
+    let currentStep = hiddenCurrentStep ? parseInt(hiddenCurrentStep.value) : 1;
     const totalSteps = 4;
     
     // Initialize form
@@ -10,10 +11,31 @@ document.addEventListener('DOMContentLoaded', function() {
         setupValidation();
         setupPasswordStrength();
         setupUsernameCheck();
+        setupEmailCheck(); // Call the new email check setup
         setupAgeCalculation();
         setupFormSubmission();
         setupAutoCapitalization();
-        showStep(1);
+        setupAutoSaveForm(); // ✅ Added auto-save feature
+        setupUserIdGeneration(); // Add this line
+        showStep(currentStep);
+    }
+
+    // Function to fetch and display user ID
+    async function setupUserIdGeneration() {
+        try {
+            const response = await fetch('../PHP/generate_id.php');
+            const data = await response.json();
+            if (data.success) {
+                const userIdField = document.getElementById('user_id');
+                if (userIdField) {
+                    userIdField.value = data.user_id;
+                }
+            } else {
+                console.error('Failed to generate user ID:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching user ID:', error);
+        }
     }
     
     // Step Navigation
@@ -41,6 +63,31 @@ document.addEventListener('DOMContentLoaded', function() {
         let isValid = true;
         const stepElement = document.getElementById(`step-${step}`);
         if (!stepElement) return false;
+
+        if (step === 3) {
+            const questions = Array.from(document.querySelectorAll('select[name="security_question[]"]'));
+            const answers = Array.from(document.querySelectorAll('input[name="security_answer[]"]'));
+            const selectedQuestions = questions.map(q => q.value);
+
+            // Check for duplicate questions
+            const uniqueQuestions = new Set(selectedQuestions.filter(q => q));
+            if (uniqueQuestions.size !== selectedQuestions.filter(q => q).length) {
+                alert('Please select three unique security questions.');
+                return false;
+            }
+
+            // Check that all questions are answered
+            for (let i = 0; i < questions.length; i++) {
+                if (!questions[i].value || !answers[i].value) {
+                    isValid = false;
+                    showError(`security_question_${i + 1}`, 'Please select a question and provide an answer.');
+                } else {
+                    clearError(`security_question_${i + 1}`);
+                }
+            }
+            return isValid;
+        }
+
         const inputs = stepElement.querySelectorAll('input[required], select[required]');
         inputs.forEach(input => { if (!validateField(input)) isValid = false; });
         return isValid;
@@ -78,6 +125,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         isValid = false;
                     }
                     break;
+                
+                case 'street':
+                case 'municipal':
+                case 'province':
+                case 'barangay':
+                    if (!validateStreet(value)) {
+                        errorMessage = getStreetErrorMessage(value);
+                        isValid = false;
+                    }
+                    break;
                     
                 case 'age':
                     const age = parseInt(value);
@@ -88,15 +145,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
                     
                 case 'zipcode':
-                    if (!/^[0-9]{4,6}$/.test(value)) {
-                        errorMessage = 'Zip code must be 4-6 digits';
+                    if (!/^[0-9]{4}$/.test(value)) {
+                        errorMessage = 'Zip code must be exactly 4 digits';
                         isValid = false;
                     }
                     break;
                     
                 case 'email':
-                    if (!validateEmail(value)) {
-                        errorMessage = 'Please enter a valid email address';
+                    errorMessage = validateEmail(value);
+                    if (errorMessage) {
                         isValid = false;
                     }
                     break;
@@ -141,7 +198,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (/[^a-zA-Z\s]/.test(name)) return false;
         if (/\s{2,}/.test(name)) return false;
         if (name === name.toUpperCase() && name.length > 1) return false;
-        if (/(.)\1{2,}/i.test(name)) return false; // Prevent 3+ consecutive letters (case-insensitive)
+        if (/(.)\1{2,}/i.test(name)) return false;
+        return true;
+    }
+
+    function validateStreet(street) {
+        if (/[^a-zA-Z0-9\s\-\.,]/.test(street)) return false; // Allow letters, numbers, spaces, and some punctuation
+        if (/\s{2,}/.test(street)) return false; // No double spaces
+        if (/(.)\1{2,}/i.test(street)) return false; // No three consecutive identical letters
         return true;
     }
     
@@ -152,6 +216,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (/(.)\1{2,}/i.test(name)) return 'Three or more consecutive identical letters are not allowed';
         return 'Invalid name format';
     }
+
+    function getStreetErrorMessage(street) {
+        if (/[^a-zA-Z0-9\s\-\.,]/.test(street)) return 'Invalid characters in street';
+        if (/\s{2,}/.test(street)) return 'Double spaces are not allowed';
+        if (/(.)\1{2,}/i.test(street)) return 'Three or more consecutive identical letters are not allowed';
+        return 'Invalid street format';
+    }
     
     function validateExtension(ext) {
         if (!ext || ext.trim() === '') return true;
@@ -160,7 +231,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function validateEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return 'Please enter a valid email address (e.g., example@gmail.com)';
+        }
+        return '';
     }
     
     function validateUsername(username) {
@@ -180,15 +255,18 @@ document.addEventListener('DOMContentLoaded', function() {
             'birthdate': 'Birthdate',
             'age': 'Age',
             'sex': 'Sex',
-            'purok_street': 'Street/Purok',
+            'street': 'Street',
             'barangay': 'Barangay',
-            'municipal_city': 'Municipal/City',
+            'municipal': 'Municipal/City',
             'province': 'Province',
             'country': 'Country',
             'zipcode': 'Zip Code',
-            'answer1': 'Security Answer 1',
-            'answer2': 'Security Answer 2',
-            'answer3': 'Security Answer 3',
+            'security_question_1': 'Security Question 1',
+            'security_answer_1': 'Security Answer 1',
+            'security_question_2': 'Security Question 2',
+            'security_answer_2': 'Security Answer 2',
+            'security_question_3': 'Security Question 3',
+            'security_answer_3': 'Security Answer 3',
             'email': 'Email',
             'username': 'Username',
             'password': 'Password',
@@ -244,39 +322,64 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function setupUsernameCheck() {
         const usernameField = document.getElementById('username');
-        const checkElement = document.getElementById('username_check');
-        
-        if (usernameField && checkElement) {
+        if (usernameField) {
             let timeout;
             usernameField.addEventListener('input', function() {
                 clearTimeout(timeout);
+                clearError('username'); // Clear previous error
                 timeout = setTimeout(() => {
-                    checkUsernameAvailability(this.value, checkElement);
+                    checkFieldAvailability('username', this.value, 'username_error');
                 }, 500);
+            });
+            usernameField.addEventListener('blur', function() {
+                clearTimeout(timeout);
+                checkFieldAvailability('username', this.value, 'username_error');
+            });
+        }
+    }
+
+    function setupEmailCheck() {
+        const emailField = document.getElementById('email');
+        if (emailField) {
+            let timeout;
+            emailField.addEventListener('input', function() {
+                clearTimeout(timeout);
+                clearError('email'); // Clear previous error
+                timeout = setTimeout(() => {
+                    checkFieldAvailability('email', this.value, 'email_error');
+                }, 500);
+            });
+            emailField.addEventListener('blur', function() {
+                clearTimeout(timeout);
+                checkFieldAvailability('email', this.value, 'email_error');
             });
         }
     }
     
-    function checkUsernameAvailability(username, checkElement) {
-        if (username.length < 3) {
-            checkElement.textContent = '';
+    async function checkFieldAvailability(field, value, errorElementId) {
+        if (value.length < 3 && (field === 'username' || field === 'email')) { // Minimum length for check
+            clearError(errorElementId);
             return;
         }
         
-        fetch(`../PHP/check_username.php?username=${encodeURIComponent(username)}`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(response => response.json())
-        .then(data => {
+        const errorElement = document.getElementById(errorElementId);
+        if (errorElement) errorElement.textContent = 'Checking availability...';
+
+        try {
+            const response = await fetch(`../PHP/check_duplicate.php?${field}=${encodeURIComponent(value)}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
             if (data.exists) {
-                checkElement.textContent = 'Username already taken';
-                checkElement.className = 'validation-message error';
+                showError(field, `${getFieldLabel(field)} already exists.`);
             } else {
-                checkElement.textContent = 'Username available';
-                checkElement.className = 'validation-message success';
+                clearError(field);
             }
-        })
-        .catch(() => { checkElement.textContent = ''; });
+        } catch (error) {
+            console.error(`Error checking ${field} availability:`, error);
+            showError(field, `Error checking ${getFieldLabel(field)}.`);
+        }
     }
     
     function setupAgeCalculation() {
@@ -284,8 +387,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const ageField = document.getElementById('age');
         
         if (birthdateField && ageField) {
-            birthdateField.addEventListener('change', function() {
-                const birthDate = new Date(this.value);
+            const calculateAgeAndSetField = () => {
+                const birthDate = new Date(birthdateField.value);
                 const today = new Date();
                 let age = today.getFullYear() - birthDate.getFullYear();
                 const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -295,20 +398,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (age >= 0 && age <= 150) {
                     ageField.value = age;
                     validateField(ageField);
+                } else {
+                    ageField.value = '';
                 }
-            });
+            };
+
+            birthdateField.addEventListener('change', calculateAgeAndSetField);
+            if (birthdateField.value) calculateAgeAndSetField();
         }
     }
     
-    // ✅ AJAX Submission with feedback
     function setupFormSubmission() {
         const form = document.getElementById('multiStepForm');
         const submitBtn = document.getElementById('submitBtn');
         
         if (form && submitBtn) {
             form.addEventListener('submit', function(e) {
-                e.preventDefault();
-
                 let allValid = true;
                 for (let i = 1; i <= totalSteps; i++) {
                     if (!validateStep(i)) {
@@ -319,6 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 if (!allValid) {
+                    e.preventDefault();
                     alert('Please complete all required fields correctly before submitting.');
                     return;
                 }
@@ -326,71 +432,167 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.textContent = 'Registering...';
                 submitBtn.disabled = true;
 
-                const formData = new FormData(form);
-
-                fetch('../PHP/register_action.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Registration Successful!',
-                            text: data.message,
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-                        setTimeout(() => {
-                            window.location.href = '../Project/index.php';
-                        }, 2000);
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Registration Failed',
-                            text: data.message || 'An error occurred.'
-                        });
-                        if (data.error_details) console.error(data.error_details);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Server Error',
-                        text: 'An unexpected error occurred. Please try again later.'
-                    });
-                })
-                .finally(() => {
-                    submitBtn.textContent = 'Register';
-                    submitBtn.disabled = false;
-                });
+                clearSavedFormData(); // ✅ clear data after submission
             });
         }
+    }
+
+    // ✅ Auto-save and restore form data using localStorage
+    function setupAutoSaveForm() {
+        const form = document.getElementById('multiStepForm');
+        if (!form) return;
+
+        // Restore saved values on load
+        const savedData = JSON.parse(localStorage.getItem('registrationFormData') || '{}');
+        for (const [key, value] of Object.entries(savedData)) {
+            const field = document.querySelector(`[name="${key}"]`);
+            if (field) field.value = value;
+        }
+
+        // Save input changes
+        form.querySelectorAll('input, select').forEach(field => {
+            field.addEventListener('input', () => {
+                const data = JSON.parse(localStorage.getItem('registrationFormData') || '{}');
+                data[field.name] = field.value;
+                localStorage.setItem('registrationFormData', JSON.stringify(data));
+            });
+        });
+    }
+
+    // ✅ Clear saved form data
+    function clearSavedFormData() {
+        localStorage.removeItem('registrationFormData');
     }
 
     // Auto-capitalization setup
     function setupAutoCapitalization() {
         const fieldsToCapitalize = [
             'first_name', 'middle_name', 'last_name', 'extension',
-            'purok_street', 'barangay', 'municipal_city', 'province', 'country',
-            'answer1', 'answer2', 'answer3'
+            'street', 'barangay', 'municipal', 'province', 'country',
+            'security_answer_1', 'security_answer_2', 'security_answer_3'
         ];
         fieldsToCapitalize.forEach(fieldName => {
             const field = document.getElementById(fieldName);
             if (field) field.addEventListener('input', e => autoCapitalizeInput(e.target));
         });
+
+        const streetField = document.getElementById('street');
+        if (streetField) {
+            streetField.addEventListener('input', e => {
+                const input = e.target;
+                const cursorPosition = input.selectionStart;
+                let value = input.value;
+
+                // Capitalize first letter of each word
+                value = value.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                // Remove double spaces
+                value = value.replace(/\s{2,}/g, ' ');
+
+                // Remove invalid characters
+                value = value.replace(/[^a-zA-Z0-9\s\-\.,]/g, '');
+
+                if (input.value !== value) {
+                    input.value = value;
+                    input.setSelectionRange(cursorPosition, cursorPosition);
+                }
+            });
+        }
+
+        const municipalField = document.getElementById('municipal');
+        if (municipalField) {
+            municipalField.addEventListener('input', e => {
+                const input = e.target;
+                const cursorPosition = input.selectionStart;
+                let value = input.value;
+
+                // Capitalize first letter of each word
+                value = value.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                // Remove double spaces
+                value = value.replace(/\s{2,}/g, ' ');
+
+                // Remove invalid characters
+                value = value.replace(/[^a-zA-Z0-9\s\-\.,]/g, '');
+
+                if (input.value !== value) {
+                    input.value = value;
+                    input.setSelectionRange(cursorPosition, cursorPosition);
+                }
+            });
+        }
+
+        const provinceField = document.getElementById('province');
+        if (provinceField) {
+            provinceField.addEventListener('input', e => {
+                const input = e.target;
+                const cursorPosition = input.selectionStart;
+                let value = input.value;
+
+                // Capitalize first letter of each word
+                value = value.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                // Remove double spaces
+                value = value.replace(/\s{2,}/g, ' ');
+
+                // Remove invalid characters
+                value = value.replace(/[^a-zA-Z0-9\s\-\.,]/g, '');
+
+                if (input.value !== value) {
+                    input.value = value;
+                    input.setSelectionRange(cursorPosition, cursorPosition);
+                }
+            });
+        }
+
+        const barangayField = document.getElementById('barangay');
+        if (barangayField) {
+            barangayField.addEventListener('input', e => {
+                const input = e.target;
+                const cursorPosition = input.selectionStart;
+                let value = input.value;
+
+                // Capitalize first letter of each word
+                value = value.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                // Remove double spaces
+                value = value.replace(/\s{2,}/g, ' ');
+
+                // Remove invalid characters
+                value = value.replace(/[^a-zA-Z0-9\s\-\.,]/g, '');
+
+                if (input.value !== value) {
+                    input.value = value;
+                    input.setSelectionRange(cursorPosition, cursorPosition);
+                }
+            });
+        }
     }
 
+    // ✅ Updated autoCapitalizeInput with suffix logic
     function autoCapitalizeInput(input) {
         const cursorPosition = input.selectionStart;
         const originalValue = input.value;
-        const capitalizedValue = originalValue
+        let capitalizedValue = originalValue
             .toLowerCase()
             .split(' ')
             .map(word => word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word)
             .join(' ');
+        
+        capitalizedValue = capitalizedValue.replace(/\s{2,}/g, ' ');
+
+        if (input.id === 'extension') {
+            const ext = capitalizedValue.trim();
+            const romanRegex = /^(ii|iii|iv|v|vi|vii|viii|ix|x)$/i;
+            if (romanRegex.test(ext)) {
+                capitalizedValue = ext.toUpperCase();
+            } else if (ext.toLowerCase() === 'jr') {
+                capitalizedValue = 'Jr';
+            } else if (ext.toLowerCase() === 'sr') {
+                capitalizedValue = 'Sr';
+            }
+        }
+
         if (originalValue !== capitalizedValue) {
             input.value = capitalizedValue;
             const newCursorPosition = Math.min(cursorPosition, capitalizedValue.length);

@@ -1,6 +1,7 @@
 <?php
 session_start();
-include("../includes/db.php");
+global $conn; // Declare $conn as global
+include(dirname(__FILE__) . "/../includes/db.php");
 
 $step = $_GET['step'] ?? 1;
 $error_message = '';
@@ -9,14 +10,13 @@ $user_data = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($step == 1) {
-        // Step 1: Verify username/email
-        $username = trim($_POST['username'] ?? '');
+        $id_number = trim($_POST['id_number'] ?? '');
         
-        if (empty($username)) {
-            $error_message = "Please enter your username or email.";
+        if (empty($id_number)) {
+            $error_message = "Please enter your ID Number.";
         } else {
-            $stmt = $conn->prepare("SELECT id, username, email, first_name, last_name FROM users WHERE username = ? OR email = ?");
-            $stmt->bind_param("ss", $username, $username);
+            $stmt = $conn->prepare("SELECT id, username, email, first_name, last_name FROM users WHERE id = ?");
+            $stmt->bind_param("s", $id_number);
             $stmt->execute();
             $result = $stmt->get_result();
             
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['reset_user_id'] = $user_data['id'];
                 $step = 2;
             } else {
-                $error_message = "Username or email not found.";
+                $error_message = "ID Number not found.";
             }
         }
     } elseif ($step == 2) {
@@ -36,22 +36,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $user_id = $_SESSION['reset_user_id'];
-        $answer1 = trim($_POST['answer1'] ?? '');
-        $answer2 = trim($_POST['answer2'] ?? '');
-        $answer3 = trim($_POST['answer3'] ?? '');
+        $submitted_questions = $_POST['security_question'] ?? [];
+        $submitted_answers = $_POST['security_answer'] ?? [];
         
-        if (empty($answer1) || empty($answer2) || empty($answer3)) {
-            $error_message = "Please answer all security questions.";
+        if (count($submitted_questions) !== 3 || count($submitted_answers) !== 3) {
+            $error_message = "Please answer all 3 security questions.";
         } else {
-            $stmt = $conn->prepare("SELECT answer_1, answer_2, answer_3 FROM users WHERE id = ?");
-            $stmt->bind_param("i", $user_id);
+            $stmt = $conn->prepare("SELECT security_question_1, answer_1, security_question_2, answer_2, security_question_3, answer_3 FROM users WHERE id = ?");
+            $stmt->bind_param("s", $user_id);
             $stmt->execute();
             $result = $stmt->get_result();
-            $user_answers = $result->fetch_assoc();
-            
-            if (password_verify(strtolower($answer1), $user_answers['answer_1']) &&
-                password_verify(strtolower($answer2), $user_answers['answer_2']) &&
-                password_verify(strtolower($answer3), $user_answers['answer_3'])) {
+            $user_security = $result->fetch_assoc();
+
+            $correct_answers = 0;
+            for ($i = 0; $i < 3; $i++) {
+                $question_key = 'security_question_' . ($i + 1);
+                $answer_key = 'answer_' . ($i + 1);
+
+                if (in_array($user_security[$question_key], $submitted_questions)) {
+                    $submitted_answer_index = array_search($user_security[$question_key], $submitted_questions);
+                    if (password_verify(strtolower(trim($submitted_answers[$submitted_answer_index])), $user_security[$answer_key])) {
+                        $correct_answers++;
+                    }
+                }
+            }
+
+            if ($correct_answers === 3) {
                 $step = 3;
             } else {
                 $error_message = "One or more security answers are incorrect.";
@@ -60,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Get user data for display
         $stmt = $conn->prepare("SELECT username, email, first_name, last_name FROM users WHERE id = ?");
-        $stmt->bind_param("i", $user_id);
+        $stmt->bind_param("s", $user_id);
         $stmt->execute();
         $user_data = $stmt->get_result()->fetch_assoc();
     } elseif ($step == 3) {
@@ -154,9 +164,9 @@ include("../includes/header.php");
             <!-- Step 1: Verify Username/Email -->
             <form method="POST" action="forgot_password.php?step=1">
                 <div class="form-group">
-                    <label for="username">Username or Email <span class="required">*</span></label>
-                    <input type="text" name="username" id="username" required 
-                           placeholder="Enter your username or email address">
+                    <label for="id_number">ID Number <span class="required">*</span></label>
+                    <input type="text" name="id_number" id="id_number" required 
+                           placeholder="Enter your ID Number">
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Continue</button>
@@ -172,23 +182,32 @@ include("../includes/header.php");
             <form method="POST" action="forgot_password.php?step=2">
                 <h3>Please answer your security questions:</h3>
                 
-                <div class="form-group">
-                    <label for="answer1">Who is your best friend in Elementary? <span class="required">*</span></label>
-                    <input type="text" name="answer1" id="answer1" required>
-                </div>
+                <?php
+                $stmt = $conn->prepare("SELECT security_question_1, security_question_2, security_question_3 FROM users WHERE id = ?");
+                $stmt->bind_param("s", $_SESSION['reset_user_id']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $questions = $result->fetch_assoc();
                 
+                for ($i = 1; $i <= 3; $i++) {
+                ?>
                 <div class="form-group">
-                    <label for="answer2">What is the name of your favorite pet? <span class="required">*</span></label>
-                    <input type="text" name="answer2" id="answer2" required>
+                    <label for="security_question_<?php echo $i; ?>">Security Question <?php echo $i; ?> <span class="required">*</span></label>
+                    <select name="security_question[]" id="security_question_<?php echo $i; ?>" required>
+                        <option value="">-- Select a Question --</option>
+                        <option value="<?php echo htmlspecialchars($questions['security_question_1']); ?>"><?php echo htmlspecialchars($questions['security_question_1']); ?></option>
+                        <option value="<?php echo htmlspecialchars($questions['security_question_2']); ?>"><?php echo htmlspecialchars($questions['security_question_2']); ?></option>
+                        <option value="<?php echo htmlspecialchars($questions['security_question_3']); ?>"><?php echo htmlspecialchars($questions['security_question_3']); ?></option>
+                    </select>
+                    <div class="password-container">
+                        <input type="password" name="security_answer[]" id="security_answer_<?php echo $i; ?>" placeholder="Answer" required>
+                        <button type="button" class="show-password" onclick="togglePassword('security_answer_<?php echo $i; ?>')">👁️</button>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="answer3">Who is your favorite teacher in high school? <span class="required">*</span></label>
-                    <input type="text" name="answer3" id="answer3" required>
-                </div>
+                <?php } ?>
                 
                 <div class="button-row">
-                    <a href="forgot_password.php" class="btn btn-secondary">Back</a>
+                    <a href="index.php" class="btn btn-secondary">Back to Login</a>
                     <button type="submit" class="btn btn-primary">Verify Answers</button>
                 </div>
             </form>
@@ -283,11 +302,7 @@ function getPasswordStrength(password) {
     return { text: 'Strong', class: 'strong' };
 }
 
-// Disable back button
-history.pushState(null, null, location.href);
-window.onpopstate = function () {
-    history.go(1);
-};
+ 
 </script>
 
 <?php include "../includes/footer.php"; ?>
