@@ -4,6 +4,11 @@ global $conn; // Declare $conn as global
 include(dirname(__FILE__) . "/../includes/db.php");
 
 $step = $_GET['step'] ?? 1;
+
+if ($step == 1) {
+    unset($_SESSION['submitted_security_data']);
+}
+
 $error_message = '';
 $success_message = '';
 $user_data = null;
@@ -39,8 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $submitted_questions = $_POST['security_question'] ?? [];
         $submitted_answers = $_POST['security_answer'] ?? [];
         
-        if (count($submitted_questions) !== 3 || count($submitted_answers) !== 3) {
+        $_SESSION['submitted_security_data'] = [
+            'questions' => $submitted_questions,
+            'answers' => $submitted_answers
+        ];
+
+        if (count($submitted_questions) !== 3 || count(array_filter($submitted_answers)) !== 3) {
             $error_message = "Please answer all 3 security questions.";
+        } elseif (count(array_unique($submitted_questions)) !== 3) {
+            $error_message = "Please select three distinct security questions.";
         } else {
             $stmt = $conn->prepare("SELECT security_question_1, answer_1, security_question_2, answer_2, security_question_3, answer_3 FROM users WHERE id = ?");
             $stmt->bind_param("s", $user_id);
@@ -48,20 +60,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = $stmt->get_result();
             $user_security = $result->fetch_assoc();
 
-            $correct_answers = 0;
-            for ($i = 0; $i < 3; $i++) {
-                $question_key = 'security_question_' . ($i + 1);
-                $answer_key = 'answer_' . ($i + 1);
+            $valid_pairs = [
+                $user_security['security_question_1'] => $user_security['answer_1'],
+                $user_security['security_question_2'] => $user_security['answer_2'],
+                $user_security['security_question_3'] => $user_security['answer_3']
+            ];
 
-                if (in_array($user_security[$question_key], $submitted_questions)) {
-                    $submitted_answer_index = array_search($user_security[$question_key], $submitted_questions);
-                    if (password_verify(strtolower(trim($submitted_answers[$submitted_answer_index])), $user_security[$answer_key])) {
-                        $correct_answers++;
+            $answer_correctness = [];
+            for ($i = 0; $i < 3; $i++) {
+                $submitted_q = $submitted_questions[$i];
+                $submitted_a = $submitted_answers[$i];
+                $is_correct = false;
+
+                if (isset($valid_pairs[$submitted_q])) {
+                    if (password_verify(strtolower(trim($submitted_a)), $valid_pairs[$submitted_q])) {
+                        $is_correct = true;
                     }
                 }
+                $answer_correctness[$i] = $is_correct;
             }
 
+            $correct_answers = count(array_filter($answer_correctness));
+            $_SESSION['submitted_security_data']['correctness'] = $answer_correctness;
+
             if ($correct_answers === 3) {
+                unset($_SESSION['submitted_security_data']);
                 $step = 3;
             } else {
                 $error_message = "One or more security answers are incorrect.";
@@ -98,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute()) {
                 $success_message = "Password successfully changed! You can now log in with your new password.";
                 unset($_SESSION['reset_user_id']);
+                unset($_SESSION['submitted_security_data']);
                 $step = 4;
             } else {
                 $error_message = "An error occurred while updating your password. Please try again.";
@@ -164,7 +188,7 @@ include("../includes/header.php");
             <!-- Step 1: Verify Username/Email -->
             <form method="POST" action="forgot_password.php?step=1">
                 <div class="form-group">
-                    <label for="id_number">ID Number <span class="required">*</span></label>
+                    <label for="id_number">ID Number <span class="required"></span></label>
                     <input type="text" name="id_number" id="id_number" required 
                            placeholder="Enter your ID Number">
                 </div>
@@ -189,19 +213,30 @@ include("../includes/header.php");
                 $result = $stmt->get_result();
                 $questions = $result->fetch_assoc();
                 
+                $submitted_data = $_SESSION['submitted_security_data'] ?? null;
+                $answer_correctness = $submitted_data['correctness'] ?? null;
+
                 for ($i = 1; $i <= 3; $i++) {
+                    $selected_question = $submitted_data['questions'][$i-1] ?? '';
+                    $submitted_answer = $submitted_data['answers'][$i-1] ?? '';
+                    $is_correct = $answer_correctness[$i-1] ?? null;
                 ?>
                 <div class="form-group">
-                    <label for="security_question_<?php echo $i; ?>">Security Question <?php echo $i; ?> <span class="required">*</span></label>
+                    <label for="security_question_<?php echo $i; ?>">Security Question <?php echo $i; ?> <span class="required"></span></label>
                     <select name="security_question[]" id="security_question_<?php echo $i; ?>" required>
                         <option value="">-- Select a Question --</option>
-                        <option value="<?php echo htmlspecialchars($questions['security_question_1']); ?>"><?php echo htmlspecialchars($questions['security_question_1']); ?></option>
-                        <option value="<?php echo htmlspecialchars($questions['security_question_2']); ?>"><?php echo htmlspecialchars($questions['security_question_2']); ?></option>
-                        <option value="<?php echo htmlspecialchars($questions['security_question_3']); ?>"><?php echo htmlspecialchars($questions['security_question_3']); ?></option>
+                        <option value="<?php echo htmlspecialchars($questions['security_question_1']); ?>" <?php if($selected_question == $questions['security_question_1']) echo 'selected'; ?>><?php echo htmlspecialchars($questions['security_question_1']); ?></option>
+                        <option value="<?php echo htmlspecialchars($questions['security_question_2']); ?>" <?php if($selected_question == $questions['security_question_2']) echo 'selected'; ?>><?php echo htmlspecialchars($questions['security_question_2']); ?></option>
+                        <option value="<?php echo htmlspecialchars($questions['security_question_3']); ?>" <?php if($selected_question == $questions['security_question_3']) echo 'selected'; ?>><?php echo htmlspecialchars($questions['security_question_3']); ?></option>
                     </select>
                     <div class="password-container">
-                        <input type="password" name="security_answer[]" id="security_answer_<?php echo $i; ?>" placeholder="Answer" required>
+                        <input type="password" name="security_answer[]" id="security_answer_<?php echo $i; ?>" placeholder="Answer" required value="<?php echo htmlspecialchars($submitted_answer); ?>">
                         <button type="button" class="show-password" onclick="togglePassword('security_answer_<?php echo $i; ?>')">👁️</button>
+                        <?php if (isset($_POST['security_answer']) && $is_correct === true): ?>
+                            <span class="answer-status correct">✔</span>
+                        <?php elseif (isset($_POST['security_answer']) && $is_correct === false): ?>
+                            <span class="answer-status incorrect">✖</span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php } ?>
@@ -223,7 +258,7 @@ include("../includes/header.php");
                 <h3>Enter your new password:</h3>
                 
                 <div class="form-group">
-                    <label for="password">New Password <span class="required">*</span></label>
+                    <label for="password">New Password <span class="required"></span></label>
                     <div class="password-container">
                         <input type="password" name="password" id="password" required>
                         <button type="button" class="show-password" onclick="togglePassword('password')">👁️</button>
@@ -233,7 +268,7 @@ include("../includes/header.php");
                 </div>
                 
                 <div class="form-group">
-                    <label for="confirm_password">Re-enter Password <span class="required">*</span></label>
+                    <label for="confirm_password">Re-enter Password <span class="required"></span></label>
                     <div class="password-container">
                         <input type="password" name="confirm_password" id="confirm_password" required>
                         <button type="button" class="show-password" onclick="togglePassword('confirm_password')">👁️</button>

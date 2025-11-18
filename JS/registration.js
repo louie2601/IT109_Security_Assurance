@@ -16,32 +16,15 @@ document.addEventListener('DOMContentLoaded', function() {
         setupFormSubmission();
         setupAutoCapitalization();
         setupAutoSaveForm(); // ✅ Added auto-save feature
-        setupUserIdGeneration(); // Add this line
         showStep(currentStep);
-    }
-
-    // Function to fetch and display user ID
-    async function setupUserIdGeneration() {
-        try {
-            const response = await fetch('../PHP/generate_id.php');
-            const data = await response.json();
-            if (data.success) {
-                const userIdField = document.getElementById('user_id');
-                if (userIdField) {
-                    userIdField.value = data.user_id;
-                }
-            } else {
-                console.error('Failed to generate user ID:', data.message);
-            }
-        } catch (error) {
-            console.error('Error fetching user ID:', error);
-        }
     }
     
     // Step Navigation
     window.nextStep = function(step) {
         if (validateStep(step)) {
             if (step < totalSteps) showStep(step + 1);
+        } else {
+            alert('Please fill out all required fields correctly before proceeding.');
         }
     };
     
@@ -64,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const stepElement = document.getElementById(`step-${step}`);
         if (!stepElement) return false;
 
-        if (step === 3) {
+        if (step === 4) {
             const questions = Array.from(document.querySelectorAll('select[name="security_question[]"]'));
             const answers = Array.from(document.querySelectorAll('input[name="security_answer[]"]'));
             const selectedQuestions = questions.map(q => q.value);
@@ -109,26 +92,48 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Specific field validations
         if (value && isValid) {
+            let validationMessage = "";
             switch (fieldName) {
                 case 'first_name':
-                case 'middle_name':
                 case 'last_name':
-                    if (!validateName(value)) {
-                        errorMessage = getNameErrorMessage(value);
+                case 'municipal':
+                case 'province':
+                case 'country':
+                    validationMessage = validateNoNumbersOrSpecialChars(value);
+                    if (validationMessage) {
+                        errorMessage = validationMessage;
                         isValid = false;
+                    }
+                    break;
+                case 'middle_name':
+                    if (value) { // middle_name is optional
+                        validationMessage = validateNoNumbersOrSpecialChars(value);
+                        if (validationMessage) {
+                            errorMessage = validationMessage;
+                            isValid = false;
+                        }
                     }
                     break;
 
                 case 'extension':
-                    if (value && value.trim() !== '' && !validateExtension(value)) {
-                        errorMessage = 'Invalid extension format';
-                        isValid = false;
+                    if (value) {
+                        const hasNumbers = /\d/.test(value);
+                        const hasSpecialChars = /[^a-zA-Z.]/.test(value);
+
+                        if (hasNumbers && hasSpecialChars) {
+                            errorMessage = 'Numbers and Special Characters are not allowed in suffix';
+                            isValid = false;
+                        } else if (hasNumbers) {
+                            errorMessage = 'Numbers are not allowed in suffix';
+                            isValid = false;
+                        } else if (hasSpecialChars) {
+                            errorMessage = 'Special characters are not allowed in suffix';
+                            isValid = false;
+                        }
                     }
                     break;
                 
                 case 'street':
-                case 'municipal':
-                case 'province':
                 case 'barangay':
                     if (!validateStreet(value)) {
                         errorMessage = getStreetErrorMessage(value);
@@ -145,7 +150,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
                     
                 case 'zipcode':
-                    if (!/^[0-9]{4}$/.test(value)) {
+                    if (/[a-zA-Z]/.test(value)) {
+                        errorMessage = 'Zip code cannot contain letters';
+                        isValid = false;
+                    } else if (!/^[0-9]{4}$/.test(value)) {
                         errorMessage = 'Zip code must be exactly 4 digits';
                         isValid = false;
                     }
@@ -194,30 +202,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Validation Helpers
-    function validateName(name) {
-        if (/[^a-zA-Z\s]/.test(name)) return false;
-        if (/\s{2,}/.test(name)) return false;
-        if (name === name.toUpperCase() && name.length > 1) return false;
-        if (/(.)\1{2,}/i.test(name)) return false;
-        return true;
+    function validateNoNumbersOrSpecialChars(value) {
+        const hasNumber = /\d/.test(value);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value);
+        const hasThreeIdenticalLetters = /(.)\1{2,}/i.test(value);
+
+        if (hasNumber && hasSpecialChar) {
+            return "Numbers and Special Character Is not allowed";
+        } else if (hasNumber) {
+            return "Number is not allowed";
+        } else if (hasSpecialChar) {
+            return "Special Character is not allowed";
+        } else if (hasThreeIdenticalLetters) {
+            return "Three or more consecutive identical letters are not allowed";
+        }
+        return "";
     }
 
     function validateStreet(street) {
+        if (/^[\-\.,]/.test(street)) return false; // Disallow starting with special characters -, .
+        if (/^\d/.test(street)) return false; // New check: Disallow starting with a number
         if (/[^a-zA-Z0-9\s\-\.,]/.test(street)) return false; // Allow letters, numbers, spaces, and some punctuation
         if (/\s{2,}/.test(street)) return false; // No double spaces
         if (/(.)\1{2,}/i.test(street)) return false; // No three consecutive identical letters
         return true;
     }
-    
-    function getNameErrorMessage(name) {
-        if (/[^a-zA-Z\s]/.test(name)) return 'Only letters and spaces are allowed';
-        if (/\s{2,}/.test(name)) return 'Double spaces are not allowed';
-        if (name === name.toUpperCase() && name.length > 1) return 'All capital letters are not allowed';
-        if (/(.)\1{2,}/i.test(name)) return 'Three or more consecutive identical letters are not allowed';
-        return 'Invalid name format';
-    }
 
     function getStreetErrorMessage(street) {
+        if (/^[\-\.,]/.test(street)) return 'Street cannot start with a special character';
+        if (/^\d/.test(street)) return 'The number should not come first'; // New error message
         if (/[^a-zA-Z0-9\s\-\.,]/.test(street)) return 'Invalid characters in street';
         if (/\s{2,}/.test(street)) return 'Double spaces are not allowed';
         if (/(.)\1{2,}/i.test(street)) return 'Three or more consecutive identical letters are not allowed';
@@ -290,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('input, select').forEach(field => {
             field.addEventListener('blur', () => validateField(field));
             field.addEventListener('input', () => {
-                if (field.classList.contains('invalid')) validateField(field);
+                validateField(field);
             });
         });
     }
@@ -343,14 +356,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (emailField) {
             let timeout;
             emailField.addEventListener('input', function() {
-                clearTimeout(timeout);
                 clearError('email'); // Clear previous error
-                timeout = setTimeout(() => {
-                    checkFieldAvailability('email', this.value, 'email_error');
-                }, 500);
+                checkFieldAvailability('email', this.value, 'email_error');
             });
             emailField.addEventListener('blur', function() {
-                clearTimeout(timeout);
                 checkFieldAvailability('email', this.value, 'email_error');
             });
         }
@@ -381,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showError(field, `Error checking ${getFieldLabel(field)}.`);
         }
     }
-    
+
     function setupAgeCalculation() {
         const birthdateField = document.getElementById('birthdate');
         const ageField = document.getElementById('age');
@@ -407,6 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (birthdateField.value) calculateAgeAndSetField();
         }
     }
+    
+
     
     function setupFormSubmission() {
         const form = document.getElementById('multiStepForm');

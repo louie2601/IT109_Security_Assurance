@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $stmt = $conn->prepare("SELECT role, is_active FROM users WHERE id = ?");
-$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->bind_param("s", $_SESSION['user_id']);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
@@ -21,12 +21,12 @@ if (!$user || $user['role'] !== 'admin' || !$user['is_active']) {
 // Handle user actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $user_id = intval($_POST['user_id'] ?? 0);
+    $user_id = $_POST['user_id'] ?? '';
 
     if ($user_id && in_array($action, ['activate', 'deactivate'])) {
         $is_active = ($action === 'activate') ? 1 : 0;
         $stmt = $conn->prepare("UPDATE users SET is_active = ? WHERE id = ?");
-        $stmt->bind_param("ii", $is_active, $user_id);
+        $stmt->bind_param("is", $is_active, $user_id);
         $stmt->execute();
 
         logSecurityEvent($conn, 'User_Status_Changed', "User {$action}d by admin", getClientIP(), $_SESSION['user_id']);

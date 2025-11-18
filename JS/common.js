@@ -3,6 +3,8 @@
  * Shared functions used across multiple pages
  */
 
+ 
+
 // Prevent back button navigation
 function disableBackButton() {
     history.pushState(null, null, location.href);

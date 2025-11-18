@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $stmt = $conn->prepare("SELECT role, is_active FROM users WHERE id = ?");
-$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->bind_param("s", $_SESSION['user_id']);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
@@ -21,19 +21,19 @@ if (!$user || $user['role'] !== 'admin' || !$user['is_active']) {
 // Handle manual verification actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $user_id = intval($_POST['user_id'] ?? 0);
+    $user_id = $_POST['user_id'] ?? '';
 
     if ($user_id && $action === 'verify_user') {
         $conn->begin_transaction();
         try {
             // Activate user account
             $stmt = $conn->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
-            $stmt->bind_param("i", $user_id);
+            $stmt->bind_param("s", $user_id);
             $stmt->execute();
 
             // Mark any pending verification tokens as used
             $stmt = $conn->prepare("UPDATE email_verification_tokens SET used = 1 WHERE user_id = ? AND used = 0");
-            $stmt->bind_param("i", $user_id);
+            $stmt->bind_param("s", $user_id);
             $stmt->execute();
 
             $conn->commit();
@@ -189,7 +189,7 @@ include("../includes/header.php");
                                         ?>
                                     </td>
                                     <td>
-                                        <button onclick="verifyUser(<?php echo $user['id']; ?>)" class="btn btn-success">✅ Verify User</button>
+                                        <button onclick="verifyUser('<?php echo $user['id']; ?>')" class="btn btn-success">✅ Verify User</button>
                                         <button onclick="resendVerification('<?php echo htmlspecialchars($user['email']); ?>')" class="btn btn-primary">📧 Resend Email</button>
                                     </td>
                                 </tr>

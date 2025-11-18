@@ -1,162 +1,203 @@
-/**
- * Login Page JavaScript
- * Handles login form validation and lockout timer
- */
+(() => {
+  'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize form validation
-    initializeLoginForm();
-});
+  const form = document.getElementById('loginForm');
+  if (!form) return;
 
-// Initialize login form with enhanced validation
-function initializeLoginForm() {
-    const usernameField = document.getElementById('username');
-    const passwordField = document.getElementById('password');
-    const loginForm = document.getElementById('loginForm');
+  const username = form.elements['username'];
+  const password = form.elements['password'];
+  const togglePassword = document.querySelector('.toggle-password');
 
-    if (usernameField && passwordField && loginForm) {
-        // Real-time validation
-        usernameField.addEventListener('input', function() {
-            validateField(this, 'username');
-        });
+  if (togglePassword) {
+    togglePassword.addEventListener('click', () => {
+      if (password.type === 'password') {
+        password.type = 'text';
+        togglePassword.textContent = '🙈';
+      } else {
+        password.type = 'password';
+        togglePassword.textContent = '👁️';
+      }
+    });
+  }
+  const forgotPassword = document.querySelector('.forgot-password');
+  const container = document.querySelector('.login-container'); // ✅ updated selector
+  const loginBtn = form.querySelector('button[type="submit"]');
+  const registerLink = form.querySelector('a[href="registration.php"]');
 
-        usernameField.addEventListener('blur', function() {
-            validateField(this, 'username');
-        });
+  // Inline error below the title
+  let globalError = document.querySelector('.login-error');
+  if (!globalError) {
+    globalError = document.createElement('div');
+    globalError.className = 'login-error';
+    const heading = container.querySelector('h2');
+    if (heading) heading.insertAdjacentElement('afterend', globalError);
+  }
 
-        passwordField.addEventListener('input', function() {
-            validateField(this, 'password');
-        });
-
-        // Form submission validation
-        loginForm.addEventListener('submit', function(e) {
-            if (!validateLoginForm()) {
-                e.preventDefault();
-                return false;
-            }
-        });
+  const setGlobalError = (msg = '') => (globalError.textContent = msg);
+  const setFieldError = (input, message) => {
+    let errorDiv;
+    if (input.id === 'username') {
+      errorDiv = document.getElementById('username_error');
+    } else if (input.id === 'password') {
+      errorDiv = document.getElementById('password_error');
     }
 
-    // Handle lockout timer
-    const timerElement = document.getElementById('lockoutTimer');
-    if (timerElement) {
-        startLockoutTimer(timerElement);
+    if (errorDiv) {
+      errorDiv.textContent = message || '';
+      input.classList.toggle('invalid', !!message);
     }
-}
+  };
 
-// Enhanced lockout timer with better state management
-function startLockoutTimer(timerElement) {
-    let timeRemaining = parseInt(timerElement.dataset.time);
+  // Prevent double spaces in username
+  username.addEventListener('input', () => {
+    username.value = username.value.replace(/\s{2,}/g, ' ');
+  });
 
-    // ✅ Enforce maximum of 60 seconds
-    if (isNaN(timeRemaining) || timeRemaining > 60) {
-        timeRemaining = 60;
-    } else if (timeRemaining < 0) {
-        timeRemaining = 0;
+  let errorCount = parseInt(localStorage.getItem('loginErrorCount')) || 0;
+  let lockUntil = parseInt(localStorage.getItem('lockUntil')) || 0;
+  let isLocked = false;
+
+  // Hide forgot password initially
+  if (forgotPassword) forgotPassword.style.display = 'none';
+
+  // Check if user is already locked
+  const now = Date.now();
+  if (lockUntil > now) lockUser(Math.ceil((lockUntil - now) / 1000));
+  else resetLockState();
+
+  const isValidUsername = (u) => /^[A-Za-z0-9_]{3,20}$/.test(u);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isLocked) {
+      setGlobalError('⏳ Please wait for the timer to end before trying again.');
+      return;
     }
 
-    const timeDisplay = document.getElementById('timeRemaining');
-    const loginBtn = document.getElementById('loginBtn');
-    const usernameField = document.getElementById('username');
-    const passwordField = document.getElementById('password');
-    const registerLink = document.getElementById('registerLink');
-    const forgotPasswordContainer = document.querySelector('.forgot-password');
+    let ok = true;
+    setGlobalError('');
 
-    // Disable all interactive elements during lockout
+    // Username validation
+    if (!username.value.trim()) {
+      setFieldError(username, 'Username required.');
+      ok = false;
+    } else if (!isValidUsername(username.value.trim())) {
+      setFieldError(username, 'Username must be 3–20 chars only.');
+      ok = false;
+    } else setFieldError(username, '');
+
+    // Password validation
+    if (!password.value.trim()) {
+      setFieldError(password, 'Password required.');
+      ok = false;
+    } else if (password.value.length < 6) {
+      setFieldError(password, 'Password must be at least 6 characters.');
+      ok = false;
+    } else setFieldError(password, '');
+
+    if (!ok) {
+      incrementError();
+      return;
+    }
+
+    try {
+      const formData = new FormData(form);
+      const res = await fetch(form.action, { method: 'POST', body: formData });
+      const text = await res.text();
+
+      if (text.includes('Invalid username or password')) {
+        incrementError();
+        setGlobalError('Invalid username or password!');
+        username.value = '';
+        password.value = '';
+      } else if (text.includes('dashboard.php')) {
+        resetLockState();
+        window.location.href = 'dashboard.php';
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setGlobalError('Something went wrong. Please try again.');
+    }
+  });
+
+  // --- Functions ---
+  function incrementError() {
+    errorCount++;
+    localStorage.setItem('loginErrorCount', errorCount);
+
+    // Show forgot password only after 2 failed attempts
+    if (errorCount >= 2 && forgotPassword) forgotPassword.style.display = 'block';
+
+    // Apply lock rules
+    if (errorCount === 3) startLock(15);
+    else if (errorCount === 6) startLock(30);
+    else if (errorCount >= 9) startLock(60);
+  }
+
+  function startLock(seconds) {
+    if (errorCount >= 9) seconds = 60; // always 60s after 9th attempt
+    const until = Date.now() + seconds * 1000;
+    localStorage.setItem('lockUntil', until);
+    lockUser(seconds);
+  }
+
+  function lockUser(seconds) {
+    isLocked = true;
+    username.disabled = true;
+    password.disabled = true;
     if (loginBtn) loginBtn.disabled = true;
-    if (usernameField) usernameField.disabled = true;
-    if (passwordField) passwordField.disabled = true;
     if (registerLink) {
-        registerLink.style.pointerEvents = 'none';
-        registerLink.style.color = '#ccc';
+      registerLink.style.pointerEvents = 'none';
+      registerLink.style.opacity = '0.5';
     }
-    if (forgotPasswordContainer) {
-        forgotPasswordContainer.style.opacity = '0.5';
-        forgotPasswordContainer.style.pointerEvents = 'none';
+    if (forgotPassword) {
+      forgotPassword.style.pointerEvents = 'none';
+      forgotPassword.style.opacity = '0.5';
     }
 
-    const countdown = setInterval(function() {
-        timeRemaining--;
-        if (timeDisplay) timeDisplay.textContent = timeRemaining;
-
-        if (timeRemaining <= 0) {
-            clearInterval(countdown);
-            if (timerElement) timerElement.style.display = 'none';
-            if (loginBtn) loginBtn.disabled = false;
-            if (usernameField) usernameField.disabled = false;
-            if (passwordField) passwordField.disabled = false;
-            if (registerLink) {
-                registerLink.style.pointerEvents = 'auto';
-                registerLink.style.color = '';
-            }
-            if (forgotPasswordContainer) {
-                forgotPasswordContainer.style.opacity = '1';
-                forgotPasswordContainer.style.pointerEvents = 'auto';
-            }
-            location.reload(); // Refresh to reset the form
-        }
+    const endTime = Date.now() + seconds * 1000;
+    const timer = setInterval(() => {
+      const remaining = Math.ceil((endTime - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(timer);
+        unlockUser();
+      } else {
+        setGlobalError(`⏳ Please wait ${remaining}s before trying again...`);
+      }
     }, 1000);
-}
+  }
 
-// Enhanced form validation
-function validateLoginForm() {
-    const username = document.getElementById('username');
-    const password = document.getElementById('password');
-    let isValid = true;
-
-    // Clear previous errors
-    ErrorHandler.clearAllErrors();
-
-    // Validate username
-    if (username && !validateField(username, 'username')) {
-        isValid = false;
+  function unlockUser() {
+    username.disabled = false;
+    password.disabled = false;
+    if (loginBtn) loginBtn.disabled = false;
+    if (registerLink) {
+      registerLink.style.pointerEvents = 'auto';
+      registerLink.style.opacity = '1';
     }
-
-    // Validate password
-    if (password && !validateField(password, 'password')) {
-        isValid = false;
+    if (forgotPassword) {
+      forgotPassword.style.pointerEvents = 'auto';
+      forgotPassword.style.opacity = '1';
     }
+    isLocked = false;
+    setGlobalError('');
+  }
 
-    return isValid;
-}
+  function resetLockState() {
+    localStorage.removeItem('lockUntil');
+    localStorage.removeItem('loginErrorCount');
+    errorCount = 0;
+    setGlobalError('');
+    if (forgotPassword) forgotPassword.style.display = 'none';
+  }
 
-function validateField(field, fieldType) {
-    const value = field.value.trim();
-    let isValid = true;
-    let errorMessage = '';
+  // Disable Browser Back Button
+  window.history.pushState(null, '', window.location.href);
+  window.addEventListener('popstate', function () {
+    window.history.pushState(null, '', window.location.href);
+  });
+})();
 
-    switch (fieldType) {
-        case 'username':
-            if (!value) {
-                errorMessage = 'Username or email is required';
-                isValid = false;
-            } else if (value.length < 3) {
-                errorMessage = 'Username must be at least 3 characters';
-                isValid = false;
-            } else if (!/^[a-zA-Z0-9@._-]+$/.test(value)) {
-                errorMessage = 'Username contains invalid characters';
-                isValid = false;
-            }
-            break;
 
-        case 'password':
-            if (!value) {
-                errorMessage = 'Password is required';
-                isValid = false;
-            } else if (value.length < 6) {
-                errorMessage = 'Password must be at least 6 characters';
-                isValid = false;
-            }
-            break;
-    }
-
-    if (!isValid) {
-        ErrorHandler.showFieldError(field, errorMessage);
-        field.classList.add('invalid');
-    } else {
-        field.classList.remove('invalid');
-        field.classList.add('valid');
-    }
-
-    return isValid;
-}

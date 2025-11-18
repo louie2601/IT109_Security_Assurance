@@ -215,11 +215,7 @@ function getPasswordStrength(password) {
     return { text: 'Strong', class: 'strong' };
 }
 
-// Disable back button
-history.pushState(null, null, location.href);
-window.onpopstate = function () {
-    history.go(1);
-};
+ 
 
 // Prevent viewing source code
 document.addEventListener('keydown', function(e) {

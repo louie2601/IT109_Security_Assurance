@@ -8,61 +8,66 @@ $ip_address = getClientIP();
 $message = '';
 $message_type = 'error';
 
-try {
-    $token = $_GET['token'] ?? '';
-
-    if (empty($token)) {
-        throw new Exception('Verification token is required');
-    }
-
-    // Find valid, unused token that hasn't expired
-    $stmt = $conn->prepare("
-        SELECT evt.id, evt.user_id, evt.email, u.first_name, u.last_name
-        FROM email_verification_tokens evt
-        JOIN users u ON evt.user_id = u.id
-        WHERE evt.token = ? AND evt.used = 0 AND evt.expires_at > NOW()
-    ");
-    $stmt->bind_param("s", $token);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        throw new Exception('Invalid or expired verification token');
-    }
-
-    $verification = $result->fetch_assoc();
-
-    // Mark token as used and activate user account
-    $conn->begin_transaction();
-
+if (isset($_GET['token'])) {
     try {
-        // Mark token as used
-        $stmt = $conn->prepare("UPDATE email_verification_tokens SET used = 1 WHERE id = ?");
-        $stmt->bind_param("i", $verification['id']);
+        $token = $_GET['token'];
+
+        if (empty($token)) {
+            throw new Exception('Verification token is required');
+        }
+
+        // Find valid, unused token that hasn't expired
+        $stmt = $conn->prepare("
+            SELECT evt.id, evt.user_id, evt.email, u.first_name, u.last_name
+            FROM email_verification_tokens evt
+            JOIN users u ON evt.user_id = u.id
+            WHERE evt.token = ? AND evt.used = 0 AND evt.expires_at > NOW()
+        ");
+        $stmt->bind_param("s", $token);
         $stmt->execute();
+        $result = $stmt->get_result();
 
-        // Activate user account
-        $stmt = $conn->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
-        $stmt->bind_param("i", $verification['user_id']);
-        $stmt->execute();
+        if ($result->num_rows === 0) {
+            throw new Exception('Invalid or expired verification token');
+        }
 
-        $conn->commit();
+        $verification = $result->fetch_assoc();
 
-        // Log successful verification
-        logSecurityEvent($conn, 'Email_Verified', 'User email verified successfully', $ip_address, $verification['user_id']);
+        // Mark token as used and activate user account
+        $conn->begin_transaction();
 
-        $message = "Email verified successfully! Welcome {$verification['first_name']} {$verification['last_name']}, your account is now active.";
-        $message_type = 'success';
+        try {
+            // Mark token as used
+            $stmt = $conn->prepare("UPDATE email_verification_tokens SET used = 1 WHERE id = ?");
+            $stmt->bind_param("i", $verification['id']);
+            $stmt->execute();
+
+            // Activate user account
+            $stmt = $conn->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
+            $stmt->bind_param("i", $verification['user_id']);
+            $stmt->execute();
+
+            $conn->commit();
+
+            // Log successful verification
+            logSecurityEvent($conn, 'Email_Verified', 'User email verified successfully', $ip_address, $verification['user_id']);
+
+            $message = "Email verified successfully! Welcome {$verification['first_name']} {$verification['last_name']}, your account is now active.";
+            $message_type = 'success';
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            throw new Exception('Failed to verify email. Please try again.');
+        }
 
     } catch (Exception $e) {
-        $conn->rollback();
-        throw new Exception('Failed to verify email. Please try again.');
+        error_log("Email verification page error: " . $e->getMessage());
+        $message = $e->getMessage();
+        $message_type = 'error';
     }
-
-} catch (Exception $e) {
-    error_log("Email verification page error: " . $e->getMessage());
-    $message = $e->getMessage();
-    $message_type = 'error';
+} else {
+    $message = "A verification email has been sent to your email address. Please check your inbox and follow the instructions to activate your account.";
+    $message_type = 'success';
 }
 
 include("../includes/header.php");
@@ -81,16 +86,10 @@ include("../includes/header.php");
             <p><?php echo htmlspecialchars($message); ?></p>
         </div>
 
-        <?php if ($message_type === 'success'): ?>
-            <div class="verification-actions">
-                <a href="login.php" class="btn btn-primary">Continue to Login</a>
-            </div>
-        <?php else: ?>
-            <div class="verification-actions">
-                <a href="login.php" class="btn btn-secondary">Back to Login</a>
-                <button onclick="resendVerification()" class="btn btn-primary">Resend Verification Email</button>
-            </div>
-        <?php endif; ?>
+        <div class="verification-actions">
+    <a href="login.php" class="btn btn-secondary">Back to Login</a>
+    <button onclick="resendVerification()" class="btn btn-primary">Resend Verification Email</button>
+</div>
     </div>
 </div>
 

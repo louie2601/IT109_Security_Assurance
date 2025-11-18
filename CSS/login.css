@@ -101,36 +101,33 @@ body {
     cursor: not-allowed;
 }
 
-/* Password Container */
-.password-container {
+.password-input-container {
     position: relative;
-    display: flex;
-    align-items: center;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    user-select: none;
 }
 
 .password-container input {
-    padding-right: 45px;
+    /* padding-right: 45px; - Removed as toggle is gone */
 }
 
 .show-password {
-    position: absolute;
-    right: 10px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 5px;
-    color: #666;
-    transition: color 0.3s ease;
+    /* Removed as toggle is gone */
 }
 
 .show-password:hover:not(:disabled) {
-    color: maroon;
+    /* Removed as toggle is gone */
 }
 
 .show-password:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+    /* Removed as toggle is gone */
 }
 
 /* Login Button */
@@ -163,12 +160,25 @@ body {
 
 /* Error Messages */
 .error-message {
-    background: #f8d7da;
-    color: #721c24;
-    padding: 12px 30px;
-    margin: 20px 0;
-    border-left: 4px solid #dc3545;
-    font-size: 14px;
+    color: #FF0000; /* Pure Red color for errors */
+    font-size: 0.8em; /* Smaller font size */
+    margin-top: 5px; /* Space above the message */
+    min-height: 1em; /* Ensure space even if no error */
+    padding-left: 5px; /* Small padding for alignment */
+    font-weight: bold; /* Make text bold */
+}
+
+/* Global Error Message (for server-side or general errors) */
+.login-error {
+    color: #FF0000; /* Pure Red */
+    text-align: center;
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f8d7da; /* Light red background */
+    border: 1px solid #f5c6cb; /* Red border */
+    border-radius: 5px;
+    font-weight: bold; /* Make text bold */
 }
 
 /* Lockout Timer */
@@ -321,4 +331,9 @@ body {
     .login-btn {
         border: 2px solid #000;
     }
+}
+/* Password visibility toggle */
+.password-input-container {
+    position: relative;
+    width: 100%;
 }

@@ -13,6 +13,26 @@ if (isset($_SESSION['user_id'])) {
 include("../includes/header.php");
 include("../includes/db.php");
 
+// Function to get the next user ID for display purposes
+function getNextUserIDForDisplay($conn) {
+    $current_year = date('Y');
+    $stmt = $conn->prepare("SELECT counter FROM user_id_counter WHERE year = ?");
+    $stmt->bind_param("i", $current_year);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $next_counter = $row['counter'] + 1;
+    } else {
+        $next_counter = 1;
+    }
+    
+    return $current_year . '-' . str_pad($next_counter, 4, '0', STR_PAD_LEFT);
+}
+
+$next_user_id = getNextUserIDForDisplay($conn);
+
 // Retrieve and clear form data from session if available
 $formData = isset($_SESSION['form_data']) ? $_SESSION['form_data'] : [];
 $currentStep = isset($_SESSION['current_step']) ? $_SESSION['current_step'] : 1;
@@ -56,11 +76,11 @@ unset($_SESSION['registration_errors']);
       </div>
       <div class="step" data-step="3">
         <div class="step-number">3</div>
-        <div class="step-label">Security Questions</div>
+        <div class="step-label">Account Info</div>
       </div>
       <div class="step" data-step="4">
         <div class="step-number">4</div>
-        <div class="step-label">Account Info</div>
+        <div class="step-label">Security Questions</div>
       </div>
     </div>
 
@@ -70,9 +90,12 @@ unset($_SESSION['registration_errors']);
         <div class="form-step active" id="step-1">
             <h2>Personal Information</h2>
 
-            <div class="form-group">
-                <label for="user_id">User ID</label>
-                <input type="text" name="user_id" id="user_id" readonly>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_number">ID Number</label>
+                    <input type="text" name="id_number" id="id_number" value="<?php echo htmlspecialchars($next_user_id); ?>" readonly>
+                    <div class="error-message" id="id_number_error"></div>
+                </div>
             </div>
 
             <div class="form-row">
@@ -109,7 +132,7 @@ unset($_SESSION['registration_errors']);
                 </div>
                 <div class="form-group">
                     <label for="age">Age <span class="required"></span></label>
-                    <input type="number" name="age" id="age" readonly>
+                    <input type="number" name="age" id="age" required readonly>
                     <div class="error-message" id="age_error"></div>
                 </div>
             </div>
@@ -127,7 +150,7 @@ unset($_SESSION['registration_errors']);
                 </div>
             </div>
 
-            <div class="button-row">
+            <div class="button-row button-row-single-right">
                 <button type="button" class="next-btn" onclick="nextStep(1)">Next</button>
             </div>
         </div>
@@ -138,8 +161,8 @@ unset($_SESSION['registration_errors']);
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="street">Street <span class="required"></span></label>
-                    <input type="text" name="street" id="street" placeholder="Ex.Purok-1" value="<?php echo htmlspecialchars($formData['street'] ?? ''); ?>" required>
+                    <label for="street">Purok/Street <span class="required"></span></label>
+                    <input type="text" name="street" id="street" placeholder="Ex.C.Curato st." value="<?php echo htmlspecialchars($formData['street'] ?? ''); ?>" required>
                     <div class="error-message" id="street_error"></div>
                 </div>
                 <div class="form-group">
@@ -181,8 +204,57 @@ unset($_SESSION['registration_errors']);
             </div>
         </div>
 
-        <!-- Step 3: Security Questions -->
+        <!-- Step 3: Account Information -->
         <div class="form-step" id="step-3">
+            <h2>Account Information</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">Email <span class="required"></span></label>
+                    <input type="email" name="email" id="email" placeholder="Ex.Example@gmail.com" value="<?php echo htmlspecialchars($formData['email'] ?? ''); ?>" required>
+                    <div class="error-message" id="email_error">
+                        <?php echo htmlspecialchars($registrationErrors['email'] ?? ''); ?>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username <span class="required"></span></label>
+                    <input type="text" name="username" id="username" value="<?php echo htmlspecialchars($formData['username'] ?? ''); ?>" required>
+                    <div class="error-message" id="username_error">
+                        <?php echo htmlspecialchars($registrationErrors['username'] ?? ''); ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="password">Password <span class="required"></span></label>
+                    <div class="password-container">
+                        <input type="password" name="password" id="password" required>
+                        <button type="button" class="show-password" onclick="togglePassword('password')">👁️</button>
+                    </div>
+                    <div class="password-strength" id="password_strength"></div>
+                    <div class="error-message" id="password_error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Re-enter Password <span class="required"></span></label>
+                    <div class="password-container">
+                        <input type="password" name="confirm_password" id="confirm_password" required>
+                        <button type="button" class="show-password" onclick="togglePassword('confirm_password')">👁️</button>
+                    </div>
+                    <div class="error-message" id="confirm_password_error"></div>
+                </div>
+            </div>
+
+            <div class="button-row">
+                <button type="button" class="prev-btn" onclick="prevStep(3)">Previous</button>
+                <button type="button" class="next-btn" onclick="nextStep(3)">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Security Questions -->
+        <div class="form-step" id="step-4">
             <h2>Security Questions</h2>
             <p>Please choose and answer 3 of the following security questions.</p>
             
@@ -199,7 +271,7 @@ unset($_SESSION['registration_errors']);
             for ($i = 1; $i <= 3; $i++) {
             ?>
             <div class="form-group">
-                <label for="security_question_<?php echo $i; ?>">Security Question <?php echo $i; ?> <span class="required">*</span></label>
+                <label for="security_question_<?php echo $i; ?>">Security Question <?php echo $i; ?> <span class="required"></span></label>
                 <select name="security_question[]" id="security_question_<?php echo $i; ?>" required>
                     <option value="">-- Select a Question --</option>
                     <?php foreach ($security_questions as $question) { ?>
@@ -213,51 +285,6 @@ unset($_SESSION['registration_errors']);
                 <div class="error-message" id="security_question_<?php echo $i; ?>_error"></div>
             </div>
             <?php } ?>
-
-            <div class="button-row">
-                <button type="button" class="prev-btn" onclick="prevStep(3)">Previous</button>
-                <button type="button" class="next-btn" onclick="nextStep(3)">Next</button>
-            </div>
-        </div>
-
-        <!-- Step 4: Account Information -->
-        <div class="form-step" id="step-4">
-            <h2>Account Information</h2>
-
-            <div class="form-group">
-                <label for="email">Email <span class="required"></span></label>
-                <input type="email" name="email" id="email" placeholder="Ex.Example@gmail.com" value="<?php echo htmlspecialchars($formData['email'] ?? ''); ?>" required>
-                <div class="error-message" id="email_error">
-                    <?php echo htmlspecialchars($registrationErrors['email'] ?? ''); ?>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="username">Username <span class="required"></span></label>
-                <input type="text" name="username" id="username" value="<?php echo htmlspecialchars($formData['username'] ?? ''); ?>" required>
-                <div class="error-message" id="username_error">
-                    <?php echo htmlspecialchars($registrationErrors['username'] ?? ''); ?>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password <span class="required"></span></label>
-                <div class="password-container">
-                    <input type="password" name="password" id="password" required>
-                    <button type="button" class="show-password" onclick="togglePassword('password')">👁️</button>
-                </div>
-                <div class="password-strength" id="password_strength"></div>
-                <div class="error-message" id="password_error"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password">Re-enter Password <span class="required"></span></label>
-                <div class="password-container">
-                    <input type="password" name="confirm_password" id="confirm_password" required>
-                    <button type="button" class="show-password" onclick="togglePassword('confirm_password')">👁️</button>
-                </div>
-                <div class="error-message" id="confirm_password_error"></div>
-            </div>
 
             <div class="button-row">
                 <button type="button" class="prev-btn" onclick="prevStep(4)">Previous</button>

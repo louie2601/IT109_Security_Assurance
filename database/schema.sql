@@ -6,10 +6,9 @@ USE sucurity;
 
 -- Users table with comprehensive fields
 CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id VARCHAR(20) PRIMARY KEY,
 
     -- Personal Information
-    id_number VARCHAR(20) UNIQUE NOT NULL,
     first_name VARCHAR(50) NOT NULL,
     middle_name VARCHAR(50) DEFAULT NULL,
     last_name VARCHAR(50) NOT NULL,
@@ -33,6 +32,12 @@ CREATE TABLE IF NOT EXISTS users (
     answer_2 VARCHAR(255) NOT NULL,
     security_question_3 VARCHAR(255) NOT NULL DEFAULT 'Who is your favorite teacher in high school?',
     answer_3 VARCHAR(255) NOT NULL,
+    security_question_4 VARCHAR(255) NOT NULL DEFAULT 'What is your favorite color?',
+    answer_4 VARCHAR(255) NOT NULL,
+    security_question_5 VARCHAR(255) NOT NULL DEFAULT 'What is your favorite fruit?',
+    answer_5 VARCHAR(255) NOT NULL,
+    security_question_6 VARCHAR(255) NOT NULL DEFAULT 'In what city were you born?',
+    answer_6 VARCHAR(255) NOT NULL,
 
     -- Account Information
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -50,6 +55,12 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT chk_zipcode CHECK (zipcode REGEXP '^[0-9]{4,6}$')
 );
 
+-- Table to manage unique user ID generation
+CREATE TABLE IF NOT EXISTS user_id_counter (
+    year INT PRIMARY KEY,
+    counter INT NOT NULL DEFAULT 0
+);
+
 -- Login attempts table for tracking failed login attempts
 CREATE TABLE IF NOT EXISTS login_attempts (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -65,7 +76,7 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 -- Password reset tokens table
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id VARCHAR(20) NOT NULL,
     token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     used BOOLEAN DEFAULT FALSE,
@@ -79,7 +90,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- Session management table
 CREATE TABLE IF NOT EXISTS user_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id VARCHAR(20) NOT NULL,
     session_id VARCHAR(255) NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     user_agent TEXT,
@@ -109,8 +120,8 @@ INSERT INTO security_questions (question) VALUES
 ('What was the name of your first school?');
 
 -- Create indexes for better performance
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_created_at ON users(created_at);
-CREATE INDEX idx_login_attempts_username ON login_attempts(username);
-CREATE INDEX idx_login_attempts_ip ON login_attempts(ip_address);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_username ON login_attempts(username);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address);
